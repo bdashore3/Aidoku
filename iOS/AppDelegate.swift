@@ -24,6 +24,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
                 "Library.opensReaderView": false,
                 "Library.unreadChapterBadges": true,
+                "Library.pinManga": false,
+                "Library.pinMangaType": 0,
 
                 "Browse.showNsfwSources": false,
                 "Browse.labelNsfwSources": true,

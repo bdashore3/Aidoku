@@ -12,17 +12,17 @@ class LibraryViewController: MangaCollectionViewController {
     var unfilteredManga: [Manga] = [] {
         didSet {
             Task { @MainActor in
-                self.emptyTextStackView.isHidden = !self.unfilteredManga.isEmpty
-                self.collectionView?.alwaysBounceVertical = !self.unfilteredManga.isEmpty
+                self.emptyTextStackView.isHidden = !self.unfilteredManga.isEmpty || !self.unfilteredPinnedManga.isEmpty
+                self.collectionView?.alwaysBounceVertical = !self.unfilteredManga.isEmpty || !self.unfilteredPinnedManga.isEmpty
             }
         }
     }
 
-    var unfilteredUpdatedManga: [Manga] = [] {
+    var unfilteredPinnedManga: [Manga] = [] {
         didSet {
             Task { @MainActor in
-                self.emptyTextStackView.isHidden = !self.unfilteredUpdatedManga.isEmpty
-                self.collectionView?.alwaysBounceVertical = !self.unfilteredUpdatedManga.isEmpty
+                self.emptyTextStackView.isHidden = !self.unfilteredManga.isEmpty || !self.unfilteredPinnedManga.isEmpty
+                self.collectionView?.alwaysBounceVertical = !self.unfilteredManga.isEmpty || !self.unfilteredPinnedManga.isEmpty
             }
         }
     }
@@ -36,14 +36,18 @@ class LibraryViewController: MangaCollectionViewController {
         }
     }
 
-    override var updatedManga: [Manga] {
+    override var pinnedManga: [Manga] {
         get {
-            unfilteredUpdatedManga.filter { searchText.isEmpty ? true : $0.title?.lowercased().contains(searchText.lowercased()) ?? true }
+            unfilteredPinnedManga.filter { searchText.isEmpty ? true : $0.title?.lowercased().contains(searchText.lowercased()) ?? true }
         }
         set {
-            unfilteredUpdatedManga = newValue
+            unfilteredPinnedManga = newValue
         }
     }
+
+    var readHistory: [String: [String: Int]] = [:]
+    var opensReaderView = false
+    var preloadsChapters = false
 
     var searchText: String = ""
     var updatedLibrary = false
@@ -96,19 +100,23 @@ class LibraryViewController: MangaCollectionViewController {
         emptyTextStackView.centerXAnchor.constraint(equalTo: view.centerXAnchor).isActive = true
         emptyTextStackView.centerYAnchor.constraint(equalTo: view.centerYAnchor).isActive = true
 
+        NotificationCenter.default.addObserver(forName: Notification.Name("Library.pinManga"), object: nil, queue: nil) { _ in
+            self.fetchLibrary()
+        }
+
         NotificationCenter.default.addObserver(forName: Notification.Name("updateLibrary"), object: nil, queue: nil) { _ in
             let previousManga = self.manga
-            let previousUpdatedManga = self.updatedManga
+            let previousPinnedManga = self.pinnedManga
 
             Task { @MainActor in
                 var reordered = false
                 await self.loadChaptersAndHistory()
 
-                if !self.updatedManga.isEmpty && self.updatedManga.count == previousUpdatedManga.count {
+                if !self.pinnedManga.isEmpty && self.pinnedManga.count == previousPinnedManga.count {
                     self.collectionView?.performBatchUpdates {
-                        for (i, manga) in previousUpdatedManga.enumerated() {
+                        for (i, manga) in previousPinnedManga.enumerated() {
                             let from = IndexPath(row: i, section: 0)
-                            if let j = self.updatedManga.firstIndex(where: { $0.sourceId == manga.sourceId && $0.id == manga.id }),
+                            if let j = self.pinnedManga.firstIndex(where: { $0.sourceId == manga.sourceId && $0.id == manga.id }),
                                j != i {
                                 let to = IndexPath(row: j, section: 0)
                                 self.collectionView?.moveItem(at: from, to: to)
@@ -122,10 +130,10 @@ class LibraryViewController: MangaCollectionViewController {
                 if !self.manga.isEmpty && self.manga.count == previousManga.count { // reorder
                     self.collectionView?.performBatchUpdates {
                         for (i, manga) in previousManga.enumerated() {
-                            let from = IndexPath(row: i, section: 1)
+                            let from = IndexPath(row: i, section: self.pinnedManga.isEmpty ? 0 : 1)
                             if let j = self.manga.firstIndex(where: { $0.sourceId == manga.sourceId && $0.id == manga.id }),
                                j != i {
-                                let to = IndexPath(row: j, section: 1)
+                                let to = IndexPath(row: j, section: self.pinnedManga.isEmpty ? 0 : 1)
                                 self.collectionView?.moveItem(at: from, to: to)
                             }
                         }
@@ -153,7 +161,6 @@ class LibraryViewController: MangaCollectionViewController {
             updatedLibrary = true
             Task {
                 await DataManager.shared.updateLibrary()
-                reloadData()
             }
         }
     }
@@ -184,80 +191,64 @@ class LibraryViewController: MangaCollectionViewController {
 
     func loadChaptersAndHistory() async {
         var tempManga: [Manga] = []
-        var tempUpdatedManga: [Manga] = []
+        var tempPinnedManga: [Manga] = []
 
-        for (i, m) in DataManager.shared.libraryManga.enumerated() {
-            if opensReaderView || preloadsChapters || badgeType == .unread {
+        if opensReaderView || preloadsChapters || badgeType == .unread {
+            var i = 0
+            for m in DataManager.shared.libraryManga {
+                let mangaId = "\(m.sourceId).\(m.id)"
+
                 if opensReaderView {
-                    readHistory[m.id] = DataManager.shared.getReadHistory(manga: m)
+                    readHistory[mangaId] = DataManager.shared.getReadHistory(manga: m)
                 }
 
-                chapters[m.id] = await DataManager.shared.getChapters(for: m)
+                chapters[mangaId] = await DataManager.shared.getChapters(for: m)
+
                 if badgeType == .unread {
                     if preloadsChapters {
-                        readHistory[m.id] = DataManager.shared.getReadHistory(manga: m)
+                        readHistory[mangaId] = DataManager.shared.getReadHistory(manga: m)
                     }
 
-                    let badgeNum = (chapters[m.id]?.count ?? 0) - (readHistory[m.id]?.count ?? 0)
+                    let badgeNum = (chapters[mangaId]?.count ?? 0) - (readHistory[mangaId]?.count ?? 0)
+                    badges[mangaId] = badgeNum
+
+                    let pinManga = UserDefaults.standard.bool(forKey: "Library.pinManga")
+                    let pinType = UserDefaults.standard.integer(forKey: "Library.pinMangaType")
+
                     if badgeNum > 0 {
-                        tempUpdatedManga.append(m)
+                        if let cell = collectionView?.cellForItem(at: IndexPath(row: i, section: 0)) as? MangaCoverCell {
+                            cell.badgeNumber = badges[mangaId]
+                        }
+                        if pinManga && pinType == 0 {
+                            tempPinnedManga.append(m)
+                            i += 1
+                        } else {
+                            tempManga.append(m)
+                        }
                     } else {
                         tempManga.append(m)
                     }
-
-                    badges[m.id] = badgeNum
-                    if let cell = collectionView?.cellForItem(at: IndexPath(row: i, section: 0)) as? MangaCoverCell {
-                        cell.badgeNumber = badges[m.id]
+                    if !pinManga {
+                        i += 1
                     }
                 }
-            } else {
-                chapters = [:]
-                readHistory = [:]
-            }
-        }
-
-        self.manga = tempManga
-        self.updatedManga = tempUpdatedManga
-    }
-}
-
-// MARK: - Library view overrides
-extension LibraryViewController {
-    override func numberOfSections(in collectionView: UICollectionView) -> Int {
-        2
-    }
-
-    override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        if section == 0 {
-            return updatedManga.count
-        } else {
-            return manga.count
-        }
-    }
-
-    override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        var cell = collectionView.dequeueReusableCell(withReuseIdentifier: "MangaCoverCell", for: indexPath) as? MangaCoverCell
-        if cell == nil {
-            cell = MangaCoverCell(frame: .zero)
-        }
-
-        if indexPath.section == 0 {
-            if updatedManga.count > indexPath.row {
-                cell?.manga = updatedManga[indexPath.row]
-                cell?.badgeNumber = badges[updatedManga[indexPath.row].id]
             }
         } else {
-            if manga.count > indexPath.row {
-                cell?.manga = manga[indexPath.row]
-                cell?.badgeNumber = badges[manga[indexPath.row].id]
-            }
+            chapters = [:]
+            readHistory = [:]
         }
 
-        return cell ?? UICollectionViewCell()
+        manga = tempManga
+        pinnedManga = tempPinnedManga
     }
 
-    override func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
-        (cell as? MangaCoverCell)?.badgeNumber = badges[indexPath.section == 0 ? updatedManga[indexPath.row].id : manga[indexPath.row].id]
+    func getNextChapter(for manga: Manga) -> Chapter? {
+        let mangaId = "\(manga.sourceId).\(manga.id)"
+        let id = readHistory[mangaId]?.max { a, b in a.value < b.value }?.key
+        if let id = id {
+            return chapters[mangaId]?.first { $0.id == id }
+        }
+        return chapters[mangaId]?.last
     }
 }
 
@@ -292,20 +283,69 @@ extension LibraryViewController: UICollectionViewDelegateFlowLayout {
 //    }
 
     override func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        guard manga.count > indexPath.row || updatedManga.count > indexPath.row else { return }
-        let manga = indexPath.section == 0 ? updatedManga[indexPath.row] : manga[indexPath.row]
+        let targetManga: Manga
+        if indexPath.section == 0 && !pinnedManga.isEmpty {
+            guard pinnedManga.count > indexPath.row else { return }
+            targetManga = pinnedManga[indexPath.row]
+        } else {
+            guard manga.count > indexPath.row else { return }
+            targetManga = manga[indexPath.row]
+        }
         if opensReaderView,
-           let chapter = getNextChapter(for: manga),
-           SourceManager.shared.source(for: manga.sourceId) != nil {
-            let readerController = ReaderViewController(manga: manga, chapter: chapter, chapterList: chapters[manga.id] ?? [])
+           let chapter = getNextChapter(for: targetManga),
+           SourceManager.shared.source(for: targetManga.sourceId) != nil {
+            let readerController = ReaderViewController(
+                manga: targetManga,
+                chapter: chapter,
+                chapterList: chapters["\(targetManga.sourceId).\(targetManga.id)"] ?? []
+            )
             let navigationController = ReaderNavigationController(rootViewController: readerController)
             navigationController.modalPresentationStyle = .fullScreen
             present(navigationController, animated: true)
         } else {
-            openMangaView(for: indexPath.section == 0 ? self.updatedManga[indexPath.row] : self.manga[indexPath.row])
+            openMangaView(for: targetManga)
         }
+        DataManager.shared.setOpened(manga: targetManga)
+    }
 
-        DataManager.shared.setOpened(manga: indexPath.section == 0 ? updatedManga[indexPath.row] : self.manga[indexPath.row])
+    override func collectionView(
+        _ collectionView: UICollectionView,
+        contextMenuConfigurationForItemAt indexPath: IndexPath,
+        point: CGPoint
+    ) -> UIContextMenuConfiguration? {
+        let targetManga: Manga
+        if indexPath.section == 0 && !self.pinnedManga.isEmpty {
+            guard self.pinnedManga.count > indexPath.row else { return nil }
+            targetManga = self.pinnedManga[indexPath.row]
+        } else {
+            guard self.manga.count > indexPath.row else { return nil }
+            targetManga = self.manga[indexPath.row]
+        }
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { actions -> UIMenu? in
+            var actions: [UIAction] = []
+
+            if DataManager.shared.libraryContains(manga: targetManga) {
+                actions.append(UIAction(title: NSLocalizedString("REMOVE_FROM_LIBRARY", comment: ""),
+                                        image: UIImage(systemName: "trash")) { _ in
+                    DataManager.shared.delete(manga: targetManga)
+                })
+            } else {
+                actions.append(UIAction(title: NSLocalizedString("ADD_TO_LIBRARY", comment: ""),
+                                        image: UIImage(systemName: "books.vertical.fill")) { _ in
+                    Task { @MainActor in
+                        if let newManga = try? await SourceManager.shared.source(for: targetManga.sourceId)?.getMangaDetails(manga: targetManga) {
+                            _ = DataManager.shared.addToLibrary(manga: newManga)
+                        }
+                    }
+                })
+            }
+            if self.opensReaderView {
+                actions.append(UIAction(title: NSLocalizedString("MANGA_INFO", comment: ""), image: UIImage(systemName: "info.circle")) { _ in
+                    self.openMangaView(for: targetManga)
+                })
+            }
+            return UIMenu(title: "", children: actions)
+        }
     }
 }
 
