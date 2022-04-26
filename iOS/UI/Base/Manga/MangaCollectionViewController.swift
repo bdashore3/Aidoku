@@ -8,7 +8,6 @@
 import UIKit
 
 class MangaCollectionViewController: UIViewController {
-
     enum MangaCellBadgeType {
         case none
         case unread
@@ -17,6 +16,7 @@ class MangaCollectionViewController: UIViewController {
 
     var collectionView: UICollectionView?
     var manga: [Manga] = []
+    var updatedManga: [Manga] = []
 
     var chapters: [String: [Chapter]] = [:]
     var readHistory: [String: [String: Int]] = [:]
@@ -80,7 +80,6 @@ class MangaCollectionViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadChaptersAndHistory()
         navigationController?.navigationBar.tintColor = UINavigationBar.appearance().tintColor
         navigationController?.tabBarController?.tabBar.tintColor = UITabBar.appearance().tintColor
     }
@@ -112,39 +111,6 @@ class MangaCollectionViewController: UIViewController {
             return chapters[manga.id]?.first { $0.id == id }
         }
         return chapters[manga.id]?.last
-    }
-
-    func loadChaptersAndHistory() {
-        if opensReaderView {
-            Task {
-                for (i, m) in manga.enumerated() {
-                    readHistory[m.id] = DataManager.shared.getReadHistory(manga: m)
-                    chapters[m.id] = await DataManager.shared.getChapters(for: m)
-                    if badgeType == .unread {
-                        badges[m.id] = (chapters[m.id]?.count ?? 0) - (readHistory[m.id]?.count ?? 0)
-                        if let cell = collectionView?.cellForItem(at: IndexPath(row: i, section: 0)) as? MangaCoverCell {
-                            cell.badgeNumber = badges[m.id]
-                        }
-                    }
-                }
-            }
-        } else if preloadsChapters || badgeType == .unread {
-            Task {
-                for (i, m) in manga.enumerated() {
-                    chapters[m.id] = await DataManager.shared.getChapters(for: m)
-                    if badgeType == .unread {
-                        readHistory[m.id] = DataManager.shared.getReadHistory(manga: m)
-                        badges[m.id] = (chapters[m.id]?.count ?? 0) - (readHistory[m.id]?.count ?? 0)
-                        if let cell = collectionView?.cellForItem(at: IndexPath(row: i, section: 0)) as? MangaCoverCell {
-                            cell.badgeNumber = badges[m.id]
-                        }
-                    }
-                }
-            }
-        } else {
-            chapters = [:]
-            readHistory = [:]
-        }
     }
 
     func reloadData() {
@@ -225,10 +191,14 @@ extension MangaCollectionViewController: UICollectionViewDelegate {
     ) -> UIContextMenuConfiguration? {
         UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { actions -> UIMenu? in
             var actions: [UIAction] = []
-            if DataManager.shared.libraryContains(manga: self.manga[indexPath.row]) {
+            let bundledManga = self.manga + self.updatedManga
+
+            let selectedManga = bundledManga[indexPath.row]
+
+            if DataManager.shared.libraryContains(manga: selectedManga) {
                 actions.append(UIAction(title: NSLocalizedString("REMOVE_FROM_LIBRARY", comment: ""),
                                         image: UIImage(systemName: "trash")) { _ in
-                    DataManager.shared.delete(manga: self.manga[indexPath.row])
+                    DataManager.shared.delete(manga: selectedManga)
                 })
             } else {
                 actions.append(UIAction(title: NSLocalizedString("ADD_TO_LIBRARY", comment: ""),
@@ -243,7 +213,7 @@ extension MangaCollectionViewController: UICollectionViewDelegate {
             }
             if self.opensReaderView {
                 actions.append(UIAction(title: NSLocalizedString("MANGA_INFO", comment: ""), image: UIImage(systemName: "info.circle")) { _ in
-                    self.openMangaView(for: self.manga[indexPath.row])
+                    self.openMangaView(for: selectedManga)
                 })
             }
             return UIMenu(title: "", children: actions)
