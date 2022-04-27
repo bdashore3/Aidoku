@@ -101,19 +101,19 @@ class Manga: KVCObject {
         Manga(
             sourceId: manga.sourceId,
             id: manga.id,
-            title: manga.title,
-            author: manga.author ?? self.author,
-            artist: manga.artist ?? self.artist,
-            description: manga.description ?? self.description,
-            tags: manga.tags ?? self.tags,
-            cover: manga.cover ?? self.cover,
-            url: manga.url ?? self.url,
+            title: manga.title ?? title,
+            author: manga.author ?? author,
+            artist: manga.artist ?? artist,
+            description: manga.description ?? description,
+            tags: manga.tags ?? tags,
+            cover: manga.cover ?? cover,
+            url: manga.url ?? url,
             status: manga.status,
             nsfw: manga.nsfw,
             viewer: manga.viewer,
-            tintColor: tintColor ?? self.tintColor,
-            lastUpdated: manga.lastUpdated ?? self.lastUpdated,
-            lastOpened: manga.lastOpened ?? self.lastOpened
+            tintColor: manga.tintColor ?? tintColor,
+            lastUpdated: manga.lastUpdated ?? lastUpdated,
+            lastOpened: manga.lastOpened ?? lastOpened
         )
     }
 
