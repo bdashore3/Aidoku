@@ -144,7 +144,7 @@ extension MangaCollectionViewController: UICollectionViewDataSource {
             cell = MangaCoverCell(frame: .zero)
         }
         if indexPath.section == 0 && pinnedManga.count > indexPath.row || manga.count > indexPath.row {
-            let targetManga = indexPath.section == 0 && !pinnedManga.isEmpty ? pinnedManga[indexPath.row] : manga[indexPath.row]
+            let targetManga = indexPath.section == 0 && pinnedManga.count > indexPath.row ? pinnedManga[indexPath.row] : manga[indexPath.row]
             cell?.manga = targetManga
             cell?.badgeNumber = badges["\(targetManga.sourceId).\(targetManga.id)"]
         }
@@ -152,8 +152,10 @@ extension MangaCollectionViewController: UICollectionViewDataSource {
     }
 
     func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
-        let targetManga = indexPath.section == 0 && pinnedManga.count > indexPath.row ? pinnedManga[indexPath.row] : manga[indexPath.row]
-        (cell as? MangaCoverCell)?.badgeNumber = badges["\(targetManga.sourceId).\(targetManga.id)"]
+        if indexPath.section == 0 && pinnedManga.count > indexPath.row || manga.count > indexPath.row {
+            let targetManga = indexPath.section == 0 && pinnedManga.count > indexPath.row ? pinnedManga[indexPath.row] : manga[indexPath.row]
+            (cell as? MangaCoverCell)?.badgeNumber = badges["\(targetManga.sourceId).\(targetManga.id)"]
+        }
     }
 }
 

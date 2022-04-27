@@ -60,6 +60,9 @@ class Manga: KVCObject {
 
     var tintColor: UIColor?
 
+    var lastUpdated: Date?
+    var lastOpened: Date?
+
     init(
         sourceId: String,
         id: String,
@@ -73,7 +76,9 @@ class Manga: KVCObject {
         status: MangaStatus = .unknown,
         nsfw: MangaContentRating = .safe,
         viewer: MangaViewer = .defaultViewer,
-        tintColor: UIColor? = nil
+        tintColor: UIColor? = nil,
+        lastUpdated: Date? = nil,
+        lastOpened: Date? = nil
     ) {
         self.sourceId = sourceId
         self.id = id
@@ -88,6 +93,8 @@ class Manga: KVCObject {
         self.nsfw = nsfw
         self.viewer = viewer
         self.tintColor = tintColor
+        self.lastUpdated = lastUpdated
+        self.lastOpened = lastOpened
     }
 
     func copy(from manga: Manga) -> Manga {
@@ -104,7 +111,9 @@ class Manga: KVCObject {
             status: manga.status,
             nsfw: manga.nsfw,
             viewer: manga.viewer,
-            tintColor: tintColor ?? self.tintColor
+            tintColor: tintColor ?? self.tintColor,
+            lastUpdated: manga.lastUpdated ?? self.lastUpdated,
+            lastOpened: manga.lastOpened ?? self.lastOpened
         )
     }
 

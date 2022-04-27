@@ -17,7 +17,7 @@ public class LibraryMangaObject: NSManagedObject {
     public override func awakeFromInsert() {
         super.awakeFromInsert()
         lastOpened = Date()
-        lastUpdated = Date()
+        lastUpdated = Date().addingTimeInterval(-5)
         dateAdded = Date()
     }
 }

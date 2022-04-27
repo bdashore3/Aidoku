@@ -112,6 +112,16 @@ class LibraryViewController: MangaCollectionViewController {
                 var reordered = false
                 await self.loadChaptersAndHistory()
 
+                if self.collectionView?.numberOfSections == 1 && !self.pinnedManga.isEmpty { // insert pinned section
+                    self.collectionView?.performBatchUpdates {
+                        self.collectionView?.insertSections(IndexSet(integer: 0))
+                    }
+                } else if self.collectionView?.numberOfSections == 2 && self.pinnedManga.isEmpty { // remove pinned section
+                    self.collectionView?.performBatchUpdates {
+                        self.collectionView?.deleteSections(IndexSet(integer: 0))
+                    }
+                }
+
                 if !self.pinnedManga.isEmpty && self.pinnedManga.count == previousPinnedManga.count {
                     self.collectionView?.performBatchUpdates {
                         for (i, manga) in previousPinnedManga.enumerated() {
@@ -219,12 +229,15 @@ class LibraryViewController: MangaCollectionViewController {
                         if let cell = collectionView?.cellForItem(at: IndexPath(row: i, section: 0)) as? MangaCoverCell {
                             cell.badgeNumber = badges[mangaId]
                         }
-                        if pinManga && pinType == 0 {
+                        if pinManga && (pinType == 0 || (pinType == 1 && m.lastUpdated ?? Date.distantPast > m.lastOpened ?? Date.distantPast)) {
                             tempPinnedManga.append(m)
                             i += 1
                         } else {
                             tempManga.append(m)
                         }
+                    } else if pinManga && pinType == 1 && m.lastUpdated ?? Date.distantPast > m.lastOpened ?? Date.distantFuture {
+                        tempPinnedManga.append(m)
+                        i += 1
                     } else {
                         tempManga.append(m)
                     }

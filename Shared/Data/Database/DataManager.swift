@@ -152,6 +152,7 @@ extension DataManager {
             if let oldManga = libraryManga.first(where: {
                 $0.sourceId == libraryObject.manga?.sourceId && $0.id == libraryObject.manga?.id }
             ) {
+                oldManga.lastOpened = libraryObject.lastOpened
                 return oldManga
             }
             return libraryObject.manga?.toManga()
@@ -198,15 +199,15 @@ extension DataManager {
         for manga in libraryManga {
             let chapters = await getChapters(for: manga, fromSource: true)
             if let mangaObject = self.getMangaObject(for: manga) {
+                mangaObject.load(from: manga)
                 if mangaObject.chapters?.count != chapters.count && !chapters.isEmpty {
                     // TODO: do something with this -- notifications?
-//                        if chapters.count > mangaObject.chapters?.count ?? 0 {
-//                            _ = Int16(chapters.count - (mangaObject.chapters?.count ?? 0))
-//                        }
+//                    if chapters.count > mangaObject.chapters?.count ?? 0 {
+//                        _ = Int16(chapters.count - (mangaObject.chapters?.count ?? 0))
+//                    }
                     self.set(chapters: chapters, for: manga)
+                    mangaObject.libraryObject?.lastUpdated = Date()
                 }
-                mangaObject.load(from: manga)
-                mangaObject.libraryObject?.lastUpdated = Date()
                 _ = self.save()
             }
         }
