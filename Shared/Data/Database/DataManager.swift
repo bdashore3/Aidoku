@@ -132,7 +132,7 @@ extension DataManager {
         Task { @MainActor in
             let chapters = await getChapters(for: manga, fromSource: true)
             self.set(chapters: chapters, for: manga)
-            loadLibrary()
+            NotificationCenter.default.post(name: Notification.Name("updateLibrary"), object: nil)
         }
 
         return libraryObject
@@ -142,14 +142,24 @@ extension DataManager {
         guard let libraryObject = getLibraryObject(for: manga, createIfMissing: false) else { return }
         libraryObject.lastOpened = Date()
         guard save() else { return }
-        loadLibrary()
+        if let oldLibraryManga = libraryManga.first(where: {
+            $0.sourceId == manga.sourceId && $0.id == manga.id }
+        ) {
+            oldLibraryManga.lastOpened = libraryObject.lastOpened
+        }
+        NotificationCenter.default.post(name: Notification.Name("updateLibrary"), object: nil)
     }
 
     func setRead(manga: Manga) {
         guard let libraryObject = getLibraryObject(for: manga, createIfMissing: false) else { return }
         libraryObject.lastRead = Date()
         guard save() else { return }
-        loadLibrary()
+        if let oldLibraryManga = libraryManga.first(where: {
+            $0.sourceId == manga.sourceId && $0.id == manga.id }
+        ) {
+            oldLibraryManga.lastRead = libraryObject.lastRead
+        }
+        NotificationCenter.default.post(name: Notification.Name("resortLibrary"), object: nil)
     }
 
     func loadLibrary() {
@@ -493,10 +503,12 @@ extension DataManager {
         NotificationCenter.default.post(name: Notification.Name("reloadLibrary"), object: nil)
     }
 
-    func addHistory(for chapters: [Chapter], date: Date = Date()) {
-        for chapter in chapters {
-            guard let historyObject = getHistoryObject(for: chapter) else { continue }
-            historyObject.dateRead = date
+    func removeHistory(for manga: Manga) {
+        guard let readHistory = try? getReadHistory(
+            predicate: NSPredicate(format: "sourceId = %@ AND mangaId = %@", manga.sourceId, manga.id)
+        ) else { return }
+        for historyObject in readHistory {
+            container.viewContext.delete(historyObject)
         }
         _ = save()
         NotificationCenter.default.post(name: Notification.Name("reloadLibrary"), object: nil)

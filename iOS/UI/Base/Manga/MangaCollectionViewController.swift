@@ -143,8 +143,6 @@ extension MangaCollectionViewController: UICollectionViewDataSource {
         if cell == nil {
             cell = MangaCoverCell(frame: .zero)
         }
-        let pinnedManga = pinnedManga
-        let manga = manga
         if indexPath.section == 0 && pinnedManga.count > indexPath.row || manga.count > indexPath.row {
             let targetManga = indexPath.section == 0 && pinnedManga.count > indexPath.row ? pinnedManga[indexPath.row] : manga[indexPath.row]
             cell?.manga = targetManga
@@ -154,8 +152,6 @@ extension MangaCollectionViewController: UICollectionViewDataSource {
     }
 
     func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
-        let pinnedManga = pinnedManga
-        let manga = manga
         if indexPath.section == 0 && pinnedManga.count > indexPath.row || manga.count > indexPath.row {
             let targetManga = indexPath.section == 0 && pinnedManga.count > indexPath.row ? pinnedManga[indexPath.row] : manga[indexPath.row]
             (cell as? MangaCoverCell)?.badgeNumber = badges["\(targetManga.sourceId).\(targetManga.id)"]
@@ -171,11 +167,9 @@ extension MangaCollectionViewController: UICollectionViewDelegate {
     }
 
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let pinnedManga = pinnedManga
         if indexPath.section == 0 && pinnedManga.count > indexPath.row {
             openMangaView(for: pinnedManga[indexPath.row])
         } else {
-            let manga = manga
             if manga.count > indexPath.row {
                 openMangaView(for: manga[indexPath.row])
             }
@@ -200,12 +194,10 @@ extension MangaCollectionViewController: UICollectionViewDelegate {
         point: CGPoint
     ) -> UIContextMenuConfiguration? {
         let targetManga: Manga
-        let pinnedManga = pinnedManga
         if indexPath.section == 0 && !pinnedManga.isEmpty {
             guard pinnedManga.count > indexPath.row else { return nil }
             targetManga = pinnedManga[indexPath.row]
         } else {
-            let manga = manga
             guard manga.count > indexPath.row else { return nil }
             targetManga = manga[indexPath.row]
         }

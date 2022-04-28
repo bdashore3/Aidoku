@@ -92,9 +92,7 @@ class MangaViewController: UIViewController {
                 self.tableView.reloadData()
             },
             UIAction(title: NSLocalizedString("UNREAD", comment: ""), image: nil) { _ in
-                for chapter in self.chapters {
-                    DataManager.shared.removeHistory(for: chapter)
-                }
+                DataManager.shared.removeHistory(for: self.manga)
                 self.updateReadHistory()
                 self.tableView.reloadData()
             }
