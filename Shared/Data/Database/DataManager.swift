@@ -132,6 +132,7 @@ extension DataManager {
         Task { @MainActor in
             let chapters = await getChapters(for: manga, fromSource: true)
             self.set(chapters: chapters, for: manga)
+            loadLibrary()
         }
 
         return libraryObject
@@ -144,16 +145,24 @@ extension DataManager {
         loadLibrary()
     }
 
+    func setRead(manga: Manga) {
+        guard let libraryObject = getLibraryObject(for: manga, createIfMissing: false) else { return }
+        libraryObject.lastRead = Date()
+        guard save() else { return }
+        loadLibrary()
+    }
+
     func loadLibrary() {
-        guard let libraryObjects = try? getLibraryObjects(
-            sortDescriptors: [NSSortDescriptor(key: "lastOpened", ascending: false)]
-        ) else { return }
+        guard let libraryObjects = try? getLibraryObjects() else { return }
         libraryManga = libraryObjects.compactMap { libraryObject -> Manga? in
             if let oldManga = libraryManga.first(where: {
                 $0.sourceId == libraryObject.manga?.sourceId && $0.id == libraryObject.manga?.id }
             ) {
-                oldManga.lastOpened = libraryObject.lastOpened
-                return oldManga
+                let newManga = oldManga.copy(from: oldManga)
+                newManga.lastOpened = libraryObject.lastOpened
+                newManga.lastRead = libraryObject.lastRead
+                newManga.dateAdded = libraryObject.dateAdded
+                return newManga
             }
             return libraryObject.manga?.toManga()
         }
@@ -460,6 +469,7 @@ extension DataManager {
         historyObject.completed = true
         historyObject.dateRead = date
         _ = save()
+        NotificationCenter.default.post(name: Notification.Name("reloadLibrary"), object: nil)
     }
 
     func setCompleted(chapters: [Chapter], date: Date = Date()) {
@@ -470,6 +480,7 @@ extension DataManager {
             }
         }
         _ = save()
+        NotificationCenter.default.post(name: Notification.Name("reloadLibrary"), object: nil)
     }
 
     func addHistory(for chapter: Chapter, page: Int? = nil, date: Date = Date()) {
@@ -479,6 +490,7 @@ extension DataManager {
             historyObject.progress = Int16(page)
         }
         _ = save()
+        NotificationCenter.default.post(name: Notification.Name("reloadLibrary"), object: nil)
     }
 
     func addHistory(for chapters: [Chapter], date: Date = Date()) {
@@ -487,12 +499,14 @@ extension DataManager {
             historyObject.dateRead = date
         }
         _ = save()
+        NotificationCenter.default.post(name: Notification.Name("reloadLibrary"), object: nil)
     }
 
     func removeHistory(for chapter: Chapter) {
         guard let historyObject = getHistoryObject(for: chapter, createIfMissing: false) else { return }
         container.viewContext.delete(historyObject)
         _ = save()
+        NotificationCenter.default.post(name: Notification.Name("reloadLibrary"), object: nil)
     }
 
     func removeHistory(for chapters: [Chapter]) {
@@ -501,6 +515,7 @@ extension DataManager {
             container.viewContext.delete(historyObject)
         }
         _ = save()
+        NotificationCenter.default.post(name: Notification.Name("reloadLibrary"), object: nil)
     }
 
     func clearHistory() {
@@ -509,6 +524,7 @@ extension DataManager {
                 container.viewContext.delete(item)
             }
             _ = save()
+            NotificationCenter.default.post(name: Notification.Name("reloadLibrary"), object: nil)
         }
     }
 

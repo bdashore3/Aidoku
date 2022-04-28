@@ -26,6 +26,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 "Library.unreadChapterBadges": true,
                 "Library.pinManga": false,
                 "Library.pinMangaType": 0,
+                "Library.sortOption": 1,
+                "Library.sortAscending": false,
 
                 "Browse.showNsfwSources": false,
                 "Browse.labelNsfwSources": true,

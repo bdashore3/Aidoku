@@ -220,7 +220,6 @@ class MangaCoverCell: UICollectionViewCell {
                 ) { result in
                     switch result {
                     case .success(let value):
-//                        print("got image \(self.manga?.title ?? "")")
                         if self.manga?.tintColor == nil {
                             self.getTintColor(from: value.image)
                         }

@@ -62,6 +62,8 @@ class Manga: KVCObject {
 
     var lastUpdated: Date?
     var lastOpened: Date?
+    var lastRead: Date?
+    var dateAdded: Date?
 
     init(
         sourceId: String,
@@ -78,7 +80,9 @@ class Manga: KVCObject {
         viewer: MangaViewer = .defaultViewer,
         tintColor: UIColor? = nil,
         lastUpdated: Date? = nil,
-        lastOpened: Date? = nil
+        lastOpened: Date? = nil,
+        lastRead: Date? = nil,
+        dateAdded: Date? = nil
     ) {
         self.sourceId = sourceId
         self.id = id
@@ -95,6 +99,8 @@ class Manga: KVCObject {
         self.tintColor = tintColor
         self.lastUpdated = lastUpdated
         self.lastOpened = lastOpened
+        self.lastRead = lastRead
+        self.dateAdded = dateAdded
     }
 
     func copy(from manga: Manga) -> Manga {
@@ -113,7 +119,9 @@ class Manga: KVCObject {
             viewer: manga.viewer,
             tintColor: manga.tintColor ?? tintColor,
             lastUpdated: manga.lastUpdated ?? lastUpdated,
-            lastOpened: manga.lastOpened ?? lastOpened
+            lastOpened: manga.lastOpened ?? lastOpened,
+            lastRead: manga.lastRead ?? lastRead,
+            dateAdded: manga.dateAdded ?? dateAdded
         )
     }
 

@@ -24,12 +24,6 @@ public class MangaObject: NSManagedObject {
         status = Int16(manga.status.rawValue)
         nsfw = Int16(manga.nsfw.rawValue)
         viewer = Int16(manga.viewer.rawValue)
-        if let lastUpdated = manga.lastUpdated {
-            libraryObject?.lastUpdated = lastUpdated
-        }
-        if let lastOpened = manga.lastOpened {
-            libraryObject?.lastOpened = lastOpened
-        }
     }
 
     func toManga() -> Manga {
@@ -47,7 +41,9 @@ public class MangaObject: NSManagedObject {
             nsfw: MangaContentRating(rawValue: Int(nsfw)) ?? .safe,
             viewer: MangaViewer(rawValue: Int(viewer)) ?? .defaultViewer,
             lastUpdated: libraryObject?.lastUpdated,
-            lastOpened: libraryObject?.lastOpened
+            lastOpened: libraryObject?.lastOpened,
+            lastRead: libraryObject?.lastRead,
+            dateAdded: libraryObject?.dateAdded
         )
     }
 
