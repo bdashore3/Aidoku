@@ -40,8 +40,7 @@ class SettingsViewController: SettingsTableViewController {
                     SettingItem(
                         type: "switch",
                         key: "General.icloudSync",
-                        title: NSLocalizedString("ICLOUD_SYNC", comment: ""),
-                        requiresFalse: "isSideloaded"
+                        title: NSLocalizedString("ICLOUD_SYNC", comment: "")
                     ),
                     SettingItem(
                         type: "segment",
